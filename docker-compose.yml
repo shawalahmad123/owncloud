@@ -44,7 +44,7 @@ services:
       OWNCLOUD_TRUSTED_DOMAINS: "127.0.0.1,owncloud.pandoratech.ae,localhost"
     volumes:
       - ./data:/mnt/data
-      - owncloud_apps:/mnt/data/apps
+      - owncloud_apps:/var/www/owncloud/apps
       - ./config:/mnt/data/config
     networks:
       - owncloud_net

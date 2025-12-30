@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>ownCloud SSO</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+</head>
+
+<body style="font-family: system-ui; padding: 20px">
+  <h2>ownCloud Single Sign-On</h2>
+
+  <button onclick="login()">Login with SSO</button>
+  <button onclick="logout()">Logout</button>
+
+  <pre id="output"></pre>
+
+  <script>
+    /*************************************************
+     * CONFIG – CHANGE THESE
+     *************************************************/
+    const OIDC_CONFIG = {
+      client_id: "owncloud-client-id",
+      redirect_uri: window.location.origin + "/",
+      authorization_endpoint: "http://127.0.0.1:8959/oauth2/authorize",
+      logout_endpoint: "http://127.0.0.1:8959/oauth2/logout",
+      scope: "openid profile email",
+      response_type: "code",
+    };
+
+    /*************************************************
+     * LOGIN
+     *************************************************/
+    function login() {
+      const state = crypto.randomUUID();
+      sessionStorage.setItem("oidc_state", state);
+
+      const url =
+        OIDC_CONFIG.authorization_endpoint +
+        "?client_id=" + encodeURIComponent(OIDC_CONFIG.client_id) +
+        "&response_type=" + OIDC_CONFIG.response_type +
+        "&scope=" + encodeURIComponent(OIDC_CONFIG.scope) +
+        "&redirect_uri=" + encodeURIComponent(OIDC_CONFIG.redirect_uri) +
+        "&state=" + encodeURIComponent(state);
+
+      window.location.href = url;
+    }
+
+    /*************************************************
+     * LOGOUT
+     *************************************************/
+    function logout() {
+      window.location.href = OIDC_CONFIG.logout_endpoint;
+    }
+
+    /*************************************************
+     * HANDLE REDIRECT
+     *************************************************/
+    (function handleRedirect() {
+      const params = new URLSearchParams(window.location.search);
+      const code = params.get("code");
+      const state = params.get("state");
+
+      if (!code) return;
+
+      if (state !== sessionStorage.getItem("oidc_state")) {
+        document.getElementById("output").textContent = "Invalid state";
+        return;
+      }
+
+      document.getElementById("output").textContent =
+        "Login successful.\n\nRedirecting to ownCloud…";
+
+      // Redirect user into ownCloud
+      window.location.href = "http://213.136.72.73:8959/";
+    })();
+  </script>
+</body>
+</html>
