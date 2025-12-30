@@ -21,6 +21,32 @@ services:
     networks:
       - owncloud_net
 
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: owncloud_keycloak
+    restart: always
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8960:8080"
+    volumes:
+      - ./keycloak:/opt/keycloak/data/import:ro
+    networks:
+      - owncloud_net
+
+  oidc-web:
+    image: nginx:alpine
+    container_name: owncloud_oidc_web
+    restart: always
+    ports:
+      - "8958:80"
+    volumes:
+      - ./owncloud_oidc.html:/usr/share/nginx/html/index.html:ro
+    networks:
+      - owncloud_net
+
   owncloud:
     image: owncloud/server:10.15
     container_name: owncloud_server
@@ -28,20 +54,24 @@ services:
     depends_on:
       - mariadb
       - redis
+      - keycloak
     ports:
       - "8959:8080"
     environment:
-      OWNCLOUD_DOMAIN: "127.0.0.1:8959"
+      OWNCLOUD_DOMAIN: "localhost:8959"
+      OWNCLOUD_OVERWRITE_CLI_URL: "http://localhost:8959"
       OWNCLOUD_DB_TYPE: mysql
       OWNCLOUD_DB_NAME: owncloud
       OWNCLOUD_DB_USERNAME: owncloud
       OWNCLOUD_DB_PASSWORD: owncloud
       OWNCLOUD_DB_HOST: owncloud_mariadb
+      OWNCLOUD_DB_PREFIX: oc_
       OWNCLOUD_ADMIN_USERNAME: admin
       OWNCLOUD_ADMIN_PASSWORD: ChangeThisPassword
       OWNCLOUD_REDIS_ENABLED: "true"
       OWNCLOUD_REDIS_HOST: owncloud_redis
-      OWNCLOUD_TRUSTED_DOMAINS: "127.0.0.1,owncloud.pandoratech.ae,localhost"
+      OWNCLOUD_VOLUME_FILES: /mnt/data/files
+      OWNCLOUD_TRUSTED_DOMAINS: "127.0.0.1,localhost,host.docker.internal,owncloud.pandoratech.ae"
     volumes:
       - ./data:/mnt/data
       - owncloud_apps:/var/www/owncloud/apps

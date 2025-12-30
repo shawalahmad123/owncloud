@@ -27,6 +27,26 @@ docker compose config
 
 ---
 
+## SSO (OpenID Connect) 🔐
+
+This repo includes a local Keycloak (IdP) and config to enable ownCloud SSO via the `openidconnect` app.
+
+Start everything:
+
+```bash
+docker compose up -d
+chmod +x ./scripts/setup_oidc.sh
+./scripts/setup_oidc.sh
+```
+
+URLs / credentials:
+- ownCloud: `http://localhost:8959` (use the "Keycloak SSO" button on the login page, or open the launcher)
+- SSO launcher page: `http://localhost:8958`
+- Keycloak: `http://localhost:8960` (admin console: user `admin`, password `admin`)
+- Test user in Keycloak: user `alice`, password `alice`
+
+---
+
 ## What this Compose does 🔎
 
 - Runs three services: `mariadb`, `redis`, and `owncloud`.
@@ -44,7 +64,7 @@ Key files:
 
 Important environment variables you can set in `docker-compose.yml` under `environment` for the `owncloud` service:
 
-- `OWNCLOUD_DOMAIN` — hostname used by ownCloud (default in this repo: `127.0.0.1:8959`)
+- `OWNCLOUD_DOMAIN` — hostname used by ownCloud (default in this repo: `localhost:8959`)
 - `OWNCLOUD_ADMIN_USERNAME` / `OWNCLOUD_ADMIN_PASSWORD` — bootstrap admin account
 - `OWNCLOUD_DB_*` — DB connection configuration
 - `OWNCLOUD_REDIS_*` — Redis connection configuration

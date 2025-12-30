@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Office 365 SSO (MSAL.js)</title>
+
+    <!-- MSAL Browser v4 -->
+    <script
+      src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@4.27.0/lib/msal-browser.min.js"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+
+  <body style="font-family: system-ui, Arial; padding: 16px;">
+    <h2>Office 365 SSO (Microsoft Entra ID)</h2>
+
+    <div style="display: flex; gap: 12px; margin: 12px 0">
+      <button id="btnSignIn">Sign in</button>
+      <button id="btnSignOut" disabled>Sign out</button>
+      <button id="btnCallGraph" disabled>Call Microsoft Graph (/me)</button>
+    </div>
+
+    <pre
+      id="output"
+      style="background: #f6f8fa; padding: 12px; border-radius: 8px"
+    ></pre>
+
+    <script>
+      /*************************************************
+       * 1) MSAL CONFIG
+       *************************************************/
+      const msalConfig = {
+        auth: {
+          clientId: "8e45660c-e15e-4556-beb5-65e9c7caa60a",
+          authority: "https://login.microsoftonline.com/common",
+          redirectUri: window.location.origin + "/",
+        },
+        cache: {
+          cacheLocation: "sessionStorage",
+          storeAuthStateInCookie: false,
+        },
+      };
+
+      const loginRequest = {
+        scopes: ["openid", "profile", "email", "User.Read"],
+      };
+
+      const graphRequest = {
+        scopes: ["User.Read"],
+      };
+
+      /*************************************************
+       * 2) CREATE MSAL INSTANCE
+       *************************************************/
+      const msalInstance = new msal.PublicClientApplication(msalConfig);
+
+      /*************************************************
+       * 3) UI HELPERS
+       *************************************************/
+      const output = document.getElementById("output");
+      const btnSignIn = document.getElementById("btnSignIn");
+      const btnSignOut = document.getElementById("btnSignOut");
+      const btnCallGraph = document.getElementById("btnCallGraph");
+
+      function log(data) {
+        output.textContent =
+          typeof data === "string" ? data : JSON.stringify(data, null, 2);
+      }
+
+      function setSignedInUI(signedIn) {
+        btnSignOut.disabled = !signedIn;
+        btnCallGraph.disabled = !signedIn;
+      }
+
+      function getAccount() {
+        let account = msalInstance.getActiveAccount();
+        if (!account) {
+          const accounts = msalInstance.getAllAccounts();
+          if (accounts.length > 0) {
+            account = accounts[0];
+            msalInstance.setActiveAccount(account);
+          }
+        }
+        return account;
+      }
+
+      /*************************************************
+       * 4) INITIALIZE + HANDLE REDIRECT
+       *************************************************/
+      async function initAuth() {
+        // REQUIRED in MSAL v3+
+        await msalInstance.initialize();
+
+        const response = await msalInstance.handleRedirectPromise();
+
+        if (response?.account) {
+          msalInstance.setActiveAccount(response.account);
+        }
+
+        const account = getAccount();
+        if (account) {
+          setSignedInUI(true);
+          log({
+            status: "Signed in",
+            username: account.username,
+            name: account.name,
+            tenantId: account.tenantId,
+          });
+        } else {
+          setSignedInUI(false);
+          log("Not signed in");
+        }
+      }
+
+      /*************************************************
+       * 5) AUTH ACTIONS
+       *************************************************/
+      btnSignIn.onclick = async () => {
+        await msalInstance.loginRedirect(loginRequest);
+      };
+
+      btnSignOut.onclick = async () => {
+        const account = getAccount();
+        await msalInstance.logoutRedirect({
+          account,
+          postLogoutRedirectUri: window.location.origin + "/",
+        });
+      };
+
+      btnCallGraph.onclick = async () => {
+        const account = getAccount();
+        if (!account) {
+          log("Not signed in");
+          return;
+        }
+
+        try {
+          const tokenResponse = await msalInstance.acquireTokenSilent({
+            ...graphRequest,
+            account,
+          });
+
+          const res = await fetch("https://graph.microsoft.com/v1.0/me", {
+            headers: {
+              Authorization: `Bearer ${tokenResponse.accessToken}`,
+            },
+          });
+
+          const data = await res.json();
+          log(data);
+        } catch (err) {
+          console.error(err);
+          log("Token acquisition failed");
+        }
+      };
+
+      /*************************************************
+       * 6) START APP
+       *************************************************/
+      initAuth().catch((err) => {
+        console.error(err);
+        log("MSAL initialization failed");
+      });
+    </script>
+  </body>
+</html>
