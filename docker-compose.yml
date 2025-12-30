@@ -25,7 +25,13 @@ services:
     image: quay.io/keycloak/keycloak:25.0
     container_name: owncloud_keycloak
     restart: always
-    command: ["start-dev", "--import-realm"]
+    command:
+      - start-dev
+      - --import-realm
+      - --features=hostname:v2
+      - --hostname=http://localhost:8960
+      - --hostname-strict=false
+      - --hostname-backchannel-dynamic=true
     environment:
       KEYCLOAK_ADMIN: admin
       KEYCLOAK_ADMIN_PASSWORD: admin
