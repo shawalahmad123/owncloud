@@ -1,0 +1,58 @@
+services:
+  mariadb:
+    image: mariadb:10.6
+    container_name: owncloud_mariadb
+    restart: always
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: owncloud
+      MYSQL_USER: owncloud
+      MYSQL_PASSWORD: owncloud
+    volumes:
+      - ./db:/var/lib/mysql
+    networks:
+      - owncloud_net
+
+  redis:
+    image: redis:7
+    container_name: owncloud_redis
+    restart: always
+    networks:
+      - owncloud_net
+
+  owncloud:
+    image: owncloud/server:10.15
+    container_name: owncloud_server
+    restart: always
+    depends_on:
+      - mariadb
+      - redis
+    ports:
+      - "8959:8080"
+    environment:
+      OWNCLOUD_DOMAIN: "127.0.0.1:8959"
+      OWNCLOUD_DB_TYPE: mysql
+      OWNCLOUD_DB_NAME: owncloud
+      OWNCLOUD_DB_USERNAME: owncloud
+      OWNCLOUD_DB_PASSWORD: owncloud
+      OWNCLOUD_DB_HOST: owncloud_mariadb
+      OWNCLOUD_ADMIN_USERNAME: admin
+      OWNCLOUD_ADMIN_PASSWORD: ChangeThisPassword
+      OWNCLOUD_REDIS_ENABLED: "true"
+      OWNCLOUD_REDIS_HOST: owncloud_redis
+      OWNCLOUD_TRUSTED_DOMAINS: "127.0.0.1,owncloud.pandoratech.ae,localhost"
+    volumes:
+      - ./data:/mnt/data
+      - owncloud_apps:/mnt/data/apps
+      - ./config:/mnt/data/config
+    networks:
+      - owncloud_net
+
+networks:
+  owncloud_net:
+    driver: bridge
+
+volumes:
+  owncloud_apps:
+    driver: local
